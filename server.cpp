@@ -6,6 +6,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <unordered_map>
+#include <iomanip> // setprecision()
 #include "tands.h"
 
 using namespace std;
@@ -20,18 +21,41 @@ string getEpochTime() {
 }
 
 /**
- * 
+ * some of the server protocol code are based on the code
+ * from the following website provided by professor Schaeffer in the class slides:
+ * binarytides.com/server-client-example-c-sockets-linux
+ */ 
+class Server {
+public:
+    Server(int port);
+    void initFdSet();
+    bool waitForRequest();
+    int acceptRequest();
+    void handleClientMessage(int clientSocketFd);
+    void printSummary();
+private:
+    int transactionNum = 1;
+    int serverSocketfd;
+    fd_set fdset;
+    timeval timeout;
+    double transactionStartTime = 0.0;
+    double transactionEndTime = 0.0;
+    unordered_map<string, int> transactions;
+};
+
+/**
+ * initialize the server by creating the socket, bind it with the specific port
+ * and listen for incoming requests
  * @param port the port number to listen to
  */
-int initServer(int port) {
-    int socketFd;
+Server::Server(int port) {
     struct sockaddr_in serverAddr;
     
     // Create socket
-    socketFd = socket(AF_INET, SOCK_STREAM, 0);
-    if (socketFd == -1) {
-		cout << "Could not create socket" << endl;
-        return -1;
+    serverSocketfd = socket(AF_INET, SOCK_STREAM, 0);
+    if (serverSocketfd == -1) {
+		perror("create socket failed");
+        exit(EXIT_FAILURE);
 	}
 
     // Prepare the sockaddr_in structure
@@ -40,27 +64,63 @@ int initServer(int port) {
 	serverAddr.sin_port = htons(port);
 
     // Bind, using bind from socket.h instead of from std namespace
-	if(::bind(socketFd, (struct sockaddr *)&serverAddr, sizeof(serverAddr))) {
+	if(::bind(serverSocketfd, (struct sockaddr *)&serverAddr, sizeof(serverAddr))) {
 		perror("bind failed");
-		return -1;
+        exit(EXIT_FAILURE);
 	}
 
     // listen with a maximum length of queue
-	if(listen(socketFd, MAX_BACKLOG) < 0) {
+	if(listen(serverSocketfd, MAX_BACKLOG) < 0) {
         perror("listen failed");
-		return -1;
+		exit(EXIT_FAILURE);
     }
-
-    return socketFd;
 }
 
-int handleClientMessage(int clientSocketFd, int transactionNum, unordered_map<string, int>& transactions) {
+void Server::initFdSet() {
+    // idea obtained from https://stackoverflow.com/a/12611162
+    FD_ZERO(&fdset); // file descriptor is set to zero bits for all file descriptors
+    FD_SET(serverSocketfd, &fdset); // set the bit for the server socket file descriptor
+
+    // int opt = 3;
+    // setsockopt(serverSocketFd, SOL_SOCKET, SO_RCVLOWAT,&opt,sizeof(opt));
+
+    // set the timeout to TIMEOUT_SEC(i.e. 30 seconds)
+    timeout.tv_sec = TIMEOUT_SEC;
+    timeout.tv_usec = 0;
+}
+
+bool Server::waitForRequest() {
+    int selectStatus = select(serverSocketfd + 1, &fdset, NULL, NULL, &timeout);
+    if (selectStatus == 0) { // timeout
+        return false;
+        // server->printSummary();
+        // break;
+    } else if (selectStatus == -1) { // error
+        perror("select failed");
+        return false;
+    } else {
+        return true;
+    }
+}
+
+int Server::acceptRequest() {
+    struct sockaddr_in clientAddr;
+    int AddrLen = sizeof(struct sockaddr_in);
+    // accept connection from an incoming client
+	int clientSocketFd = accept(serverSocketfd, (struct sockaddr *)&clientAddr, (socklen_t*)&AddrLen);
+	if (clientSocketFd < 0) { // bad connection
+        perror("accept failed");
+	}
+    return clientSocketFd;
+}
+
+void Server::handleClientMessage(int clientSocketFd) {
     // the client message contains the host name and the transaction number
     // 64 bytes should be enough to handle both information
     char clientMessage[64] = {};
     if (recv(clientSocketFd, clientMessage, sizeof(clientMessage), 0) < 0) {
         perror("error occured while server trying to recieve message");
-        return -1;
+        return;
     }
 
     string message = string(clientMessage);
@@ -68,9 +128,20 @@ int handleClientMessage(int clientSocketFd, int transactionNum, unordered_map<st
     string clientHostname = message.substr(0, spaceIdx);
     int n = stoi(message.substr(spaceIdx + 1));
 
-    cout << getEpochTime() << ": # " << transactionNum << " (T " << n << ") from " << clientHostname << "\n";
+    string startTime = getEpochTime();
+    if (this->transactionStartTime == 0.0) {
+        // first transaction, record the time
+        transactionStartTime = stod(startTime);
+    }
+
+    cout << startTime << ": # " << transactionNum << " (T " << n << ") from " << clientHostname << "\n";
+
+    // transaction simulation
     Trans(n);
-    cout << getEpochTime() << ": # " << transactionNum << " (Done) from " << clientHostname << "\n";
+
+    string endTime = getEpochTime();
+    this->transactionEndTime = stod(endTime);
+    cout << endTime << ": # " << transactionNum << " (Done) from " << clientHostname << "\n";
     
     if (transactions.find(clientHostname) == transactions.end()) {
         transactions[clientHostname] = 1;
@@ -82,16 +153,22 @@ int handleClientMessage(int clientSocketFd, int transactionNum, unordered_map<st
     const char* reply = (string("D ") + to_string(transactionNum)).c_str();
 	if (send(clientSocketFd, reply, strlen(reply), 0) < 0) {
         perror("server fail to send message");
-        return -1;
+        return;
     }
-    return 0;
+
+    // successful transaction
+    this->transactionNum++;
 }
 
-void printSummary(unordered_map<string, int>& transactions) {
+void Server::printSummary() {
     cout << "SUMMARY\n";
     for (auto iter = transactions.begin(); iter != transactions.end(); iter++) {
         cout << "  " << iter->second << " transactions from " << iter->first << "\n";
     }
+    int totalTransactions = transactionNum - 1; // -1 since transaction num starts from 1
+    double totalTranactionTime = transactionEndTime - transactionStartTime;
+    cout << "  " << setprecision(2) << fixed << totalTransactions / totalTranactionTime << 
+            " transactions/sec    (" << totalTransactions << "/" << totalTranactionTime << ")\n";
 }
 
 int main(int argc, char** argv) {
@@ -107,47 +184,23 @@ int main(int argc, char** argv) {
     }
     cout << "Using port " << port << "\n";
 
-    int transactionNum = 1;
-    int serverSocketFd = initServer(port);
-    int AddrLen = sizeof(struct sockaddr_in);
-    struct sockaddr_in clientAddr;
-
-    long timerStart = stol(getEpochTime());
-
-    // idea obtained from https://stackoverflow.com/a/12611162
-    fd_set fdset;
-    FD_ZERO(&fdset); // file descriptor is set to zero bits for all file descriptors
-    FD_SET(serverSocketFd, &fdset); // set the bit for the server socket file descriptor
-
-    // int opt = 3;
-    // setsockopt(serverSocketFd, SOL_SOCKET, SO_RCVLOWAT,&opt,sizeof(opt));
-
-    timeval timeout;
-    timeout.tv_sec = TIMEOUT_SEC;
-    timeout.tv_usec = 0;
-
-    unordered_map<string, int> transactions;
+    Server* server = new Server(port);
+    server->initFdSet();
 
     while (true) {
-        int selectStatus = select(serverSocketFd + 1, &fdset, NULL, NULL, &timeout);
-        if (selectStatus == 0) { // timeout
-            printSummary(transactions);
+        bool flag = server->waitForRequest();
+        if (!flag) { // server timeout or select() failed
+            server->printSummary();
             break;
-        } else if (selectStatus == -1) { // error
-            perror("select failed");
-            return -1;
         }
 
         // accept connection from an incoming client
-	    int clientSocketFd = accept(serverSocketFd, (struct sockaddr *)&clientAddr, (socklen_t*)&AddrLen);
+	    int clientSocketFd = server->acceptRequest();
 	    if (clientSocketFd < 0) { // bad connection
-            perror("accept failed");
-            return -1;
+            perror("accept failed, discarding this request");
+            continue;
 	    }
         
-        if (handleClientMessage(clientSocketFd, transactionNum, transactions) < 0) {
-            return -1;
-        }
-        transactionNum++;
+        server->handleClientMessage(clientSocketFd);
     }
 }
