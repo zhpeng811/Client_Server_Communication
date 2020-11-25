@@ -18,17 +18,12 @@ string getEpochTime() {
 	gettimeofday(&time, NULL);
     return to_string(time.tv_sec) + "." + to_string(time.tv_usec).substr(0, 2);
 }
-// class Server {
-// public:
-//     Server(int port);
-    
-// private:
-//     int transactionNum;
-//     int socketFd;
-//     unordered_map<string, int> transactions;
 
-// };
-int InitServer(int port) {
+/**
+ * 
+ * @param port the port number to listen to
+ */
+int initServer(int port) {
     int socketFd;
     struct sockaddr_in serverAddr;
     
@@ -113,7 +108,7 @@ int main(int argc, char** argv) {
     cout << "Using port " << port << "\n";
 
     int transactionNum = 1;
-    int serverSocketFd = InitServer(port);
+    int serverSocketFd = initServer(port);
     int AddrLen = sizeof(struct sockaddr_in);
     struct sockaddr_in clientAddr;
 
@@ -134,7 +129,7 @@ int main(int argc, char** argv) {
     unordered_map<string, int> transactions;
 
     while (true) {
-        int selectStatus = select(serverSocketFd+1, &fdset, NULL, NULL, &timeout);
+        int selectStatus = select(serverSocketFd + 1, &fdset, NULL, NULL, &timeout);
         if (selectStatus == 0) { // timeout
             printSummary(transactions);
             break;
