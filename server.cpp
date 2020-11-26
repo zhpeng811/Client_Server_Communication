@@ -7,18 +7,20 @@
 #include <fcntl.h>
 #include <unordered_map>
 #include <iomanip> // setprecision()
+
 #include "tands.h"
+#include "util.h"
 
 using namespace std;
 
 #define MAX_BACKLOG 50
 #define TIMEOUT_SEC 30
 
-string getEpochTime() {
-    timeval time;
-	gettimeofday(&time, NULL);
-    return to_string(time.tv_sec) + "." + to_string(time.tv_usec).substr(0, 2);
-}
+// string getEpochTime() {
+//     timeval time;
+// 	gettimeofday(&time, NULL);
+//     return to_string(time.tv_sec) + "." + to_string(time.tv_usec).substr(0, 2);
+// }
 
 /**
  * some of the server protocol code are based on the code
@@ -28,11 +30,12 @@ string getEpochTime() {
 class Server {
 public:
     Server(int port);
-    void initFdSet();
+    void cleanup();
     bool waitForRequest();
     int acceptRequest();
     void handleClientMessage(int clientSocketFd);
     void printSummary();
+
 private:
     int transactionNum = 1;
     int serverSocketfd;
@@ -74,9 +77,7 @@ Server::Server(int port) {
         perror("listen failed");
 		exit(EXIT_FAILURE);
     }
-}
 
-void Server::initFdSet() {
     // idea obtained from https://stackoverflow.com/a/12611162
     FD_ZERO(&fdset); // file descriptor is set to zero bits for all file descriptors
     FD_SET(serverSocketfd, &fdset); // set the bit for the server socket file descriptor
@@ -89,12 +90,15 @@ void Server::initFdSet() {
     timeout.tv_usec = 0;
 }
 
+void Server::cleanup() {
+    close(serverSocketfd);
+}
+
 bool Server::waitForRequest() {
+    // select will block until a request arrived or times out
     int selectStatus = select(serverSocketfd + 1, &fdset, NULL, NULL, &timeout);
     if (selectStatus == 0) { // timeout
         return false;
-        // server->printSummary();
-        // break;
     } else if (selectStatus == -1) { // error
         perror("select failed");
         return false;
@@ -185,7 +189,6 @@ int main(int argc, char** argv) {
     cout << "Using port " << port << "\n";
 
     Server* server = new Server(port);
-    server->initFdSet();
 
     while (true) {
         bool flag = server->waitForRequest();
@@ -203,4 +206,6 @@ int main(int argc, char** argv) {
         
         server->handleClientMessage(clientSocketFd);
     }
+
+    server->cleanup();
 }

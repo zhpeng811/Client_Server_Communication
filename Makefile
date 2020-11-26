@@ -2,8 +2,8 @@ CC = g++
 CFLAGS = -c -Wall -O2 -std=c++11
 PROGRAM_CLIENT = client
 PROGRAM_SERVER = server
-OBJS_CLIENT = client.o tands.o
-OBJS_SERVER = server.o tands.o
+OBJS_CLIENT = client.o tands.o util.o
+OBJS_SERVER = server.o tands.o util.o
 
 all: $(PROGRAM_CLIENT) $(PROGRAM_SERVER)
 
@@ -21,6 +21,9 @@ server.o: server.cpp
 
 client.o: client.cpp
 	$(CC) $(CFLAGS) client.cpp -o client.o
+
+util.o: util.cpp util.h
+	$(CC) $(CFLAGS) util.cpp -o util.o
 
 tands.o: tands.c tands.h
 	$(CC) $(CFLAGS) tands.c -o tands.o
