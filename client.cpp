@@ -28,36 +28,53 @@ public:
     void parseInput();
 
 private:
-    int port;
-    int numTransactions;
+    int port; // the port number provided by user
+    int numTransactions = 0; // the number of transactions client sent
+
     // the client socket of the current transaction
     // each transaction will have a new socket
     int clientSocketFd;
-    char* ipAddress;
-    string fileName;
-    ofstream outputFile;
+
+    char* ipAddress; // the ip address provided by the user
+    string fileName; // filename of the output log 
+    ofstream outputFile; // output file stream of the log file
 };
 
+/**
+ * Constructor, setting the port and ip address
+ * @param port the port to send requests
+ * @param ipAddress the ip address to send requests
+ */
 Client::Client(int port, char* ipAddress) {
     this->port = port;
     this->ipAddress = ipAddress;
 }
 
+/**
+ * cleanup function before exiting
+ */
 void Client::cleanup() {
     closeSocket();
     outputFile.close();
 }
 
+/**
+ * close the current opened socket
+ */
 void Client::closeSocket() {
     close(clientSocketFd);
     clientSocketFd = -1;
 }
 
+/**
+ * initialize the log file by getting the hostname and open the file
+ */
 void Client::initLogFile() {
     // assuming the host name is at most 64 bytes
     char buffer[64];
     if (gethostname(buffer, sizeof(buffer)) < 0) {
         perror("Could not retrieve hostname");
+        cleanup();
         exit(EXIT_FAILURE);
     }
 
@@ -70,6 +87,9 @@ void Client::initLogFile() {
     outputFile << "Host " << fileName << "\n";
 }
 
+/**
+ * create a client socket and connect it to the address of the server at the specified port
+ */
 bool Client::createAndConnect() {
     // Create a client socket
     clientSocketFd = socket(AF_INET, SOCK_STREAM, 0);
@@ -91,6 +111,9 @@ bool Client::createAndConnect() {
     return true;
 }
 
+/**
+ * send a T<n> message to the server
+ */
 bool Client::sendMessage(int n) {
     bool flag = createAndConnect();
     // failed to create socket or could not connect to server
@@ -111,6 +134,9 @@ bool Client::sendMessage(int n) {
     return this->getResponse();
 }   
 
+/**
+ * get a D<n> response from the server
+ */
 bool Client::getResponse() {
     // the response is a number that represents the transaction number
     // 16 bytes should be enough to handle the response
@@ -127,6 +153,10 @@ bool Client::getResponse() {
     return true;
 }
 
+/**
+ * parse user inputs, the input can be from command line or redirected from a file
+ * input must be either T<n> or S<n>, where n is an integer
+ */
 void Client::parseInput() {
     string inputLine = "";
 	while (getline(cin, inputLine)) {

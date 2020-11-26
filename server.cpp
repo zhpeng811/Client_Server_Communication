@@ -69,12 +69,14 @@ Server::Server(int port) {
     // Bind, using bind from socket.h instead of from std namespace
 	if(::bind(serverSocketfd, (struct sockaddr *)&serverAddr, sizeof(serverAddr))) {
 		perror("bind failed");
+        cleanup();
         exit(EXIT_FAILURE);
 	}
 
     // listen with a maximum length of queue
 	if(listen(serverSocketfd, MAX_BACKLOG) < 0) {
         perror("listen failed");
+        cleanup();
 		exit(EXIT_FAILURE);
     }
 
@@ -82,18 +84,23 @@ Server::Server(int port) {
     FD_ZERO(&fdset); // file descriptor is set to zero bits for all file descriptors
     FD_SET(serverSocketfd, &fdset); // set the bit for the server socket file descriptor
 
-    // int opt = 3;
-    // setsockopt(serverSocketFd, SOL_SOCKET, SO_RCVLOWAT,&opt,sizeof(opt));
-
     // set the timeout to TIMEOUT_SEC(i.e. 30 seconds)
     timeout.tv_sec = TIMEOUT_SEC;
     timeout.tv_usec = 0;
 }
 
+/**
+ * cleanup by closing the socket
+ */
 void Server::cleanup() {
     close(serverSocketfd);
 }
 
+/**
+ * wait for client requests
+ * @return true if a client request arrives
+ *         false if select() failed or timed out
+ */
 bool Server::waitForRequest() {
     // select will block until a request arrived or times out
     int selectStatus = select(serverSocketfd + 1, &fdset, NULL, NULL, &timeout);
@@ -107,6 +114,11 @@ bool Server::waitForRequest() {
     }
 }
 
+/**
+ * accept the request from client
+ * @return the client socket file descriptor
+ *         or -1 if accept() failed
+ */
 int Server::acceptRequest() {
     struct sockaddr_in clientAddr;
     int AddrLen = sizeof(struct sockaddr_in);
@@ -118,6 +130,11 @@ int Server::acceptRequest() {
     return clientSocketFd;
 }
 
+/**
+ * handle client message by receive the message and
+ * send the current transaction number back to the client
+ * @param clientSocketFd the file descriptor of the client socket
+ */
 void Server::handleClientMessage(int clientSocketFd) {
     // the client message contains the host name and the transaction number
     // 64 bytes should be enough to handle both information
@@ -164,6 +181,10 @@ void Server::handleClientMessage(int clientSocketFd) {
     this->transactionNum++;
 }
 
+/**
+ * print the summary of the server, including the number of transactions received from each client
+ * and the total transactions/second
+ */
 void Server::printSummary() {
     cout << "SUMMARY\n";
     for (auto iter = transactions.begin(); iter != transactions.end(); iter++) {
@@ -207,5 +228,4 @@ int main(int argc, char** argv) {
         server->handleClientMessage(clientSocketFd);
     }
 
-    server->cleanup();
 }
