@@ -1,10 +1,17 @@
+/**
+ * client.cpp
+ * Ze Hui Peng(zhpeng)
+ * Fall 2020 CMPUT 379 Assignment 3
+ */
+
 #include <iostream>
 #include <fstream>
-#include <sys/socket.h>
+#include <sys/socket.h> 
 #include <arpa/inet.h>
 #include <unistd.h>
 #include <sys/time.h> 
 #include <string>
+#include <string.h>
 
 #include "tands.h"
 #include "util.h"
@@ -55,6 +62,8 @@ Client::Client(int port, char* ipAddress) {
  */
 void Client::cleanup() {
     closeSocket();
+    // needed for edge case where there's no input (i.e. only EOF character)
+    outputFile.flush();
     outputFile.close();
 }
 
@@ -62,8 +71,10 @@ void Client::cleanup() {
  * close the current opened socket
  */
 void Client::closeSocket() {
-    close(clientSocketFd);
-    clientSocketFd = -1;
+    if (clientSocketFd != -1) {
+        close(clientSocketFd);
+        clientSocketFd = -1;
+    }
 }
 
 /**
@@ -139,7 +150,7 @@ bool Client::sendMessage(int n) {
  */
 bool Client::getResponse() {
     // the response is a number that represents the transaction number
-    // 16 bytes should be enough to handle the response
+    // 16 bytes should be enough to store the transaction number
     char response[16] = {};
     if (recv(clientSocketFd, response, sizeof(response), 0) < 0) {
         perror("error occured while client trying to recieve message");
@@ -160,8 +171,8 @@ bool Client::getResponse() {
 void Client::parseInput() {
     string inputLine = "";
 	while (getline(cin, inputLine)) {
-		char op = inputLine.at(0);
 		try {
+            char op = inputLine.at(0);
 			int n = stoi(inputLine.substr(1));
 			if (op == 'T') {
                 if (!this->sendMessage(n)) {
@@ -201,4 +212,6 @@ int main(int argc, char** argv) {
 
     // after finished all inputs
     client->cleanup();
+
+    delete client;
 }

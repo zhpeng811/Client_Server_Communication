@@ -1,3 +1,9 @@
+/**
+ * server.cpp
+ * Ze Hui Peng(zhpeng)
+ * Fall 2020 CMPUT 379 Assignment 3
+ */
+
 #include <iostream>
 #include <sys/socket.h>
 #include <arpa/inet.h>
@@ -7,6 +13,7 @@
 #include <fcntl.h>
 #include <unordered_map>
 #include <iomanip> // setprecision()
+#include <string.h> // strlen()
 
 #include "tands.h"
 #include "util.h"
@@ -40,7 +47,6 @@ private:
     int transactionNum = 1;
     int serverSocketfd;
     fd_set fdset;
-    timeval timeout;
     double transactionStartTime = 0.0;
     double transactionEndTime = 0.0;
     unordered_map<string, int> transactions;
@@ -83,10 +89,6 @@ Server::Server(int port) {
     // idea obtained from https://stackoverflow.com/a/12611162
     FD_ZERO(&fdset); // file descriptor is set to zero bits for all file descriptors
     FD_SET(serverSocketfd, &fdset); // set the bit for the server socket file descriptor
-
-    // set the timeout to TIMEOUT_SEC(i.e. 30 seconds)
-    timeout.tv_sec = TIMEOUT_SEC;
-    timeout.tv_usec = 0;
 }
 
 /**
@@ -102,6 +104,16 @@ void Server::cleanup() {
  *         false if select() failed or timed out
  */
 bool Server::waitForRequest() {
+    // For Linux, the timeout have to be reinitialized for every select() call
+    // From the select() man page:
+    /*
+     * On Linux, select() modifies 'timeout' to reflect the amount of time not slept...
+     * Consider timeout to be undefined after select() returns
+     */
+    timeval timeout;
+    timeout.tv_sec = TIMEOUT_SEC; // set the timeout to TIMEOUT_SEC(i.e. 30 seconds)
+    timeout.tv_usec = 0;
+
     // select will block until a request arrived or times out
     int selectStatus = select(serverSocketfd + 1, &fdset, NULL, NULL, &timeout);
     if (selectStatus == 0) { // timeout
@@ -193,7 +205,7 @@ void Server::printSummary() {
     int totalTransactions = transactionNum - 1; // -1 since transaction num starts from 1
     double totalTranactionTime = transactionEndTime - transactionStartTime;
     cout << "  " << setprecision(2) << fixed << totalTransactions / totalTranactionTime << 
-            " transactions/sec    (" << totalTransactions << "/" << totalTranactionTime << ")\n";
+            " transactions/sec  (" << totalTransactions << "/" << totalTranactionTime << ")\n";
 }
 
 int main(int argc, char** argv) {
@@ -228,4 +240,5 @@ int main(int argc, char** argv) {
         server->handleClientMessage(clientSocketFd);
     }
 
+    delete server;
 }

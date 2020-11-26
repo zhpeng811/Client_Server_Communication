@@ -1,3 +1,9 @@
+/**
+ * util.cpp
+ * Ze Hui Peng(zhpeng)
+ * Fall 2020 CMPUT 379 Assignment 3
+ */
+
 #include "util.h"
 
 string getEpochTime() {

@@ -8,7 +8,7 @@ OBJS_SERVER = server.o tands.o util.o
 all: $(PROGRAM_CLIENT) $(PROGRAM_SERVER)
 
 debug: CFLAGS = -c -Wall -g -std=c++11
-debug: $(PROGRAM)
+debug: $(PROGRAM_CLIENT) $(PROGRAM_SERVER)
 
 $(PROGRAM_CLIENT): $(OBJS_CLIENT)
 	$(CC) $(OBJS_CLIENT) -o client
