@@ -9,8 +9,6 @@ CLIENT_MAN_PAGE = client.pdf
 
 all: $(PROGRAM_CLIENT) $(PROGRAM_SERVER) $(SERVER_MAN_PAGE) $(CLIENT_MAN_PAGE)
 
-man: $(MAN_PAGES)
-
 debug: CFLAGS = -c -Wall -g -std=c++11
 debug: $(PROGRAM_CLIENT) $(PROGRAM_SERVER)
 
