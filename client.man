@@ -1,0 +1,30 @@
+.TH CLIENT 1 "25 November 2020"
+.SH NAME
+client - a program that sends the message requests to the server
+.SH SYNOPSIS
+\fBclient\fP <port> <ip address>
+.SH DESCRIPTION
+client takes inputs in the form of \fBT<n>\fP or \fBS<n>\fP, 
+where n is an integer. Where \fBT\fP represents \fBT\fPransaction, 
+and \fBS\fP represents \fBS\fPleep. For \fBT\fP inputs, client will create
+a socket and send the message to the server at the specified \fB<port>\fP and \fB<ip address>\fP.
+after the server accepts this request and processed the transaction,
+the client should recieve a response \fBD<n>\fP, where n represents the transaction number.
+For \fBS<n>\fP inputs, the client will sleep for n amount of units before continuing to process inputs.
+.SS Arguments
+.TP
+\fB<port>\fP the port to communicate with the server, should be an integer value in the range [5000, 64000]
+.TP
+\fB<ip address>\fP the ip address of where the server program is running
+.SH MESSAGE FORMAT
+the message send to the server should be in the format of "hostname.pid n",
+where \fBhostname\fP is the name of the host running the client program, \fBpid\fP is the process id running the client program,
+and n is the integer attached with \fBT\fP inputs
+.SH INPUT 
+the program recieve inputs either through command line or redirected from a file,
+the program stop recieving input upon recieving a EOF(CTRL+D) character
+.SH OUTPUT
+upon program termination, the output will be saved to a log file named hostname.pid,
+
+.SH SEE ALSO
+server(1)

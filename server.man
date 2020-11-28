@@ -1,0 +1,23 @@
+.TH SERVER 1 "25 November 2020"
+.SH NAME
+server - a program that accepts and processes messages send from the client
+.SH SYNOPSIS
+\fBserver\fP <port>
+.SH DESCRIPTION
+server recieve messages that are send by the client(s).
+The messages should be in the form of "hostname.pid n".
+The server then process the transaction and send a response message \fBD<n>\fP back to the client,
+where n is an integer that represents the transaction number(how many transactions that the server already processed).
+The server is keeping track of the time it recieved the first input and the time it finished processing the last input.
+The server is also keeping track of how many messages are send by each client(clients are identified by the message part hostname.pid)
+.SS Argument
+.TP
+\fB<port>\fP the port to communicate with the client, should be an integer value in the range [5000, 64000]
+.SH OUTPUT
+The server output is directed send to STDOUT
+.SH TIMEOUT
+The server is implemented as an infinite loop, but it will timeout and terminate after 30 seconds if there are no clients sending any message.
+The server will output a summary table to STDOUT before termination, the summary table contains the number of messages sent by each client and
+the number of transactions per second
+.SH SEE ALSO
+client(1)

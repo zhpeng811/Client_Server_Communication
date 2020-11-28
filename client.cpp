@@ -72,7 +72,9 @@ void Client::cleanup() {
  */
 void Client::closeSocket() {
     if (clientSocketFd != -1) {
-        close(clientSocketFd);
+        if (close(clientSocketFd) < 0) {
+            perror("failed to close client socket");
+        }
         clientSocketFd = -1;
     }
 }
