@@ -185,6 +185,12 @@ void Server::handleClientMessage(int clientSocketFd) {
 
     // successful transaction
     this->transactionNum++;
+    if (clientSocketFd != -1) {
+        // hang up on client by closing the socket
+        if (close(clientSocketFd) < 0) {
+            perror("failed to close client socket");
+        }
+    }
 }
 
 /**
