@@ -23,12 +23,6 @@ using namespace std;
 #define MAX_BACKLOG 50
 #define TIMEOUT_SEC 30
 
-// string getEpochTime() {
-//     timeval time;
-// 	gettimeofday(&time, NULL);
-//     return to_string(time.tv_sec) + "." + to_string(time.tv_usec).substr(0, 2);
-// }
-
 /**
  * some of the server protocol code are based on the code
  * from the following website provided by professor Schaeffer in the class slides:
