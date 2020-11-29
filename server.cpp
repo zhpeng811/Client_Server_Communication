@@ -143,8 +143,9 @@ int Server::acceptRequest() {
  */
 void Server::handleClientMessage(int clientSocketFd) {
     // the client message contains the host name and the transaction number
-    // 64 bytes should be enough to handle both information
-    char clientMessage[64] = {};
+    // the maximum host name length is 64 bytes and transaction number(integer) is 10 bytes
+    // 128 bytes should be enough to handle both information
+    char clientMessage[128] = {};
     if (recv(clientSocketFd, clientMessage, sizeof(clientMessage), 0) < 0) {
         perror("error occured while server trying to recieve message");
         return;

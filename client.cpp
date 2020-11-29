@@ -83,8 +83,8 @@ void Client::closeSocket() {
  * initialize the log file by getting the hostname and open the file
  */
 void Client::initLogFile() {
-    // assuming the host name is at most 64 bytes
-    char buffer[64];
+    // host name on Linux is at most 64 bytes (+1 byte for null terminator)
+    char buffer[65];
     if (gethostname(buffer, sizeof(buffer)) < 0) {
         perror("Could not retrieve hostname");
         cleanup();
@@ -151,8 +151,9 @@ bool Client::sendMessage(int n) {
  * get a D<n> response from the server
  */
 bool Client::getResponse() {
-    // the response is a number that represents the transaction number
-    // 16 bytes should be enough to store the transaction number
+    // the response is in format "D number"
+    // where number represents the transaction number, which is an integer
+    // max length of integer is 10, 16 bytes should be enough to store the response
     char response[16] = {};
     if (recv(clientSocketFd, response, sizeof(response), 0) < 0) {
         perror("error occured while client trying to recieve message");
